@@ -1,0 +1,24 @@
+plugins {
+    id 'java-library'
+    id 'java-conventions'
+}
+
+group = 'com.kaua.ecommerce.common-lib.domain'
+
+dependencies {
+}
+
+configurations {
+    testClasses {
+        extendsFrom(testImplementation)
+    }
+}
+
+tasks.register('testJar', Jar) {
+    archiveClassifier.set('test')
+    from sourceSets.test.output
+}
+
+artifacts {
+    testClasses testJar
+}

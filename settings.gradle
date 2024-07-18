@@ -1,0 +1,4 @@
+rootProject.name = 'ecommerce-ms-common-lib'
+include 'domain'
+include 'infrastructure'
+

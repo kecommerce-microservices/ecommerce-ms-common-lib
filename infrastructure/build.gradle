@@ -1,0 +1,9 @@
+plugins {
+    id 'java-library'
+    id 'java-conventions'
+}
+
+group = 'com.kaua.ecommerce.common-lib.infrastructure'
+
+dependencies {
+}
