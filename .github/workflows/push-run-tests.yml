@@ -27,4 +27,4 @@ jobs:
           distribution: 'temurin'
 
       - name: Execute application tests
-        run: ./gradlew test --rerun-tasks --stacktrace
+        run: ./gradlew jacocoTestReport

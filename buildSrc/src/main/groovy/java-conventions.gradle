@@ -19,10 +19,6 @@ test {
     useJUnitPlatform()
 }
 
-tasks.named("test") {
-    finalizedBy("jacocoTestReport")
-}
-
 jacocoTestCoverageVerification {
     violationRules {
         rule {

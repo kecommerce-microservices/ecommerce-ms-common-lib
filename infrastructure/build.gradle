@@ -1,9 +1,35 @@
 plugins {
     id 'java-library'
     id 'java-conventions'
+    id 'jacoco-report-aggregation'
+    id "org.sonarqube" version "4.4.1.3373"
 }
 
 group = 'com.kaua.ecommerce.common-lib.infrastructure'
 
 dependencies {
+    implementation(project(":domain"))
+
+    testImplementation(project(path: ':domain', configuration: 'testClasses'))
+}
+
+testCodeCoverageReport {
+    reports {
+        xml.required = true
+        xml.outputLocation = file("$rootDir/build/reports/jacoco/test/jacocoTestReport.xml")
+        html.required = true
+        html.outputLocation = file("$rootDir/build/reports/jacoco/test/jacocoTestReport.html")
+    }
+}
+
+tasks.named("jacocoTestReport") {
+    dependsOn(testCodeCoverageReport)
+}
+
+sonar {
+    properties {
+        property "sonar.projectKey", "kecommerce-microservices_ecommerce-ms-common-lib"
+        property "sonar.organization", "kecommerce-microservices"
+        property "sonar.host.url", "https://sonarcloud.io"
+    }
 }
