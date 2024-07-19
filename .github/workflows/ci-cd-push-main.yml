@@ -122,4 +122,7 @@ jobs:
           distribution: 'temurin'
 
       - name: Publish Domain package
+        env:
+          USERNAME: ${{ secrets.USERNAME }}
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
         run: ./gradlew :domain:publish
