@@ -123,6 +123,6 @@ jobs:
 
       - name: Publish Domain package
         env:
-          USERNAME: ${{ secrets.USERNAME }}
+          GB_USERNAME: ${{ secrets.USERNAME }}
           PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
         run: ./gradlew :domain:publish
