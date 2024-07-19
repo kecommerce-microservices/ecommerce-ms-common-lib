@@ -1,11 +1,31 @@
 plugins {
     id 'java-library'
     id 'java-conventions'
+    id 'maven-publish'
 }
 
 group = 'com.kaua.ecommerce.common-lib.domain'
 
 dependencies {
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/kecommerce-microservices/ecommerce-ms-common-lib')
+            credentials {
+                username = project.findProperty('gpr.user') ?: System.getenv("USERNAME")
+                password = project.findProperty('gpr.key') ?: System.getenv("PERSONAL_TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from components.java
+        }
+    }
+
 }
 
 configurations {
