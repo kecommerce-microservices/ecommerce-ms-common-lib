@@ -92,14 +92,14 @@ jobs:
           java-version: 17
           distribution: 'temurin'
 
-      - name: Execute application tests
-        run: ./gradlew test --rerun-tasks --stacktrace
+      - name: Execute application tests and generate coverage report
+        run: ./gradlew jacocoTestReport
 
-#      - name: Upload coverage to Codecov
-#        uses: codecov/codecov-action@v4
-#        with:
-#          files: ./build/reports/jacoco/test/jacocoTestReport.xml
-#          name: ecommerce-ms-common-lib
-#          verbose: true
-#          fail_ci_if_error: true
-#          token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./build/reports/jacoco/test/jacocoTestReport.xml
+          name: ecommerce-ms-common-lib
+          verbose: true
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }}
