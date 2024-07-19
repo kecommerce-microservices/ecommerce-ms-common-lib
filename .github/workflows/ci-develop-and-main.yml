@@ -1,9 +1,10 @@
-name: CI Pipeline for Pull Requests to Develop
+name: CI Pipeline for Pull Requests to Develop and Main
 
 on:
   pull_request:
     branches:
       - develop
+      - main
   workflow_dispatch:
 
 jobs:
