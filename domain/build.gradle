@@ -15,7 +15,7 @@ publishing {
             name = 'GitHubPackages'
             url = uri('https://maven.pkg.github.com/kecommerce-microservices/ecommerce-ms-common-lib')
             credentials {
-                username = project.findProperty('gpr.user') ?: System.getenv("USERNAME")
+                username = project.findProperty('gpr.user') ?: System.getenv("GB_USERNAME")
                 password = project.findProperty('gpr.key') ?: System.getenv("PERSONAL_TOKEN")
             }
         }
