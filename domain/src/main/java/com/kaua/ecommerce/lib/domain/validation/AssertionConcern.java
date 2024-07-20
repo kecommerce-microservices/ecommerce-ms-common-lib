@@ -18,6 +18,13 @@ public interface AssertionConcern {
         return val;
     }
 
+    default String assertArgumentLength(String val, int length, String propertyName, String aMessage) {
+        if (val == null || val.length() != length) {
+            throw DomainException.with(new Error(propertyName, aMessage));
+        }
+        return val;
+    }
+
     default String assertArgumentMaxLength(String val, int max, String propertyName, String message) {
         if (val != null && val.length() > max) {
             throw DomainException.with(new Error(propertyName, message));
