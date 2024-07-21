@@ -2,6 +2,9 @@ package com.kaua.ecommerce.lib.domain.validation;
 
 import com.kaua.ecommerce.lib.domain.exceptions.DomainException;
 
+import java.util.List;
+import java.util.Set;
+
 public interface AssertionConcern {
 
     default <T> T assertArgumentNotNull(T val, String propertyName, String message) {
@@ -53,6 +56,24 @@ public interface AssertionConcern {
 
     default void assertArgumentGreaterOrEquals(int val, int min, String propertyName, String message) {
         if (val < min) {
+            throw DomainException.with(new Error(propertyName, message));
+        }
+    }
+
+    default void assertArgumentPattern(String val, String pattern, String propertyName, String message) {
+        if (val != null && !val.matches(pattern)) {
+            throw DomainException.with(new Error(propertyName, message));
+        }
+    }
+
+    default <T> void assertArgumentNotEmpty(Set<T> val, String propertyName, String message) {
+        if (val == null || val.isEmpty()) {
+            throw DomainException.with(new Error(propertyName, message));
+        }
+    }
+
+    default <T> void assertArgumentNotEmpty(List<T> val, String propertyName, String message) {
+        if (val == null || val.isEmpty()) {
             throw DomainException.with(new Error(propertyName, message));
         }
     }

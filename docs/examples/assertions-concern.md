@@ -1,5 +1,5 @@
 # Exemplos utilizando o AssertionConcern
-Aqui está um exemplo simples, ainda temos o greater, o condition true e o not null.
+Aqui está um exemplo simples, ainda temos o greater, o condition true, o not null, pattern e empty list ou set.
 ```java
 public record Person(
     String name,
