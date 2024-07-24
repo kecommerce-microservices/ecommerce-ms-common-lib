@@ -17,6 +17,7 @@ Uma lib contendo algumas classes que vão ser usadas em outros microserviços
 - **Elementos de DDD**: Contém elementos comuns de Domain-Driven Design como aggregateRoot, entity, identifier e valueobjects.
 - **Exceções**: Fornece uma classe genérica de exception (NoStacktraceException), temos dai a domain exception junto com a not found exception.
 - **Utils**: Fornece classes utilitárias como Period, InstantUtils, IdentifierUtils e RandomStringUtils.
+- **Pagination**: Temos uma classe que contem a paginação, que é muito utilizada em consultas paginadas. Ela contem os items e metadata.
 
 # Exemplos
 - [Exemplos utilizando o AssertionConcern](docs/examples/assertions-concern.md)
