@@ -126,3 +126,9 @@ jobs:
           GB_USERNAME: ${{ secrets.USERNAME }}
           PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
         run: ./gradlew :domain:publish
+
+      - name: Publish Infrastructure package
+        env:
+          GB_USERNAME: ${{ secrets.USERNAME }}
+          PERSONAL_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+        run: ./gradlew :infrastructure:publish

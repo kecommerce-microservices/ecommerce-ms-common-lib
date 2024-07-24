@@ -3,6 +3,7 @@ plugins {
     id 'java-conventions'
     id 'jacoco-report-aggregation'
     id "org.sonarqube" version "4.4.1.3373"
+    id 'maven-publish'
 }
 
 group = 'com.kaua.ecommerce.common-lib.infrastructure'
@@ -11,6 +12,25 @@ dependencies {
     implementation(project(":domain"))
 
     testImplementation(project(path: ':domain', configuration: 'testClasses'))
+}
+
+publishing {
+    repositories {
+        maven {
+            name = 'GitHubPackages'
+            url = uri('https://maven.pkg.github.com/kecommerce-microservices/ecommerce-ms-common-lib')
+            credentials {
+                username = project.findProperty('gpr.user') ?: System.getenv("GB_USERNAME")
+                password = project.findProperty('gpr.key') ?: System.getenv("PERSONAL_TOKEN")
+            }
+        }
+    }
+    publications {
+        gpr(MavenPublication) {
+            from components.java
+        }
+    }
+
 }
 
 testCodeCoverageReport {
