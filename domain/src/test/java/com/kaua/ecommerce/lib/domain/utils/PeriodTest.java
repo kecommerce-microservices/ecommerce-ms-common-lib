@@ -5,6 +5,8 @@ import com.kaua.ecommerce.lib.domain.exceptions.DomainException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+import java.time.temporal.ChronoUnit;
+
 public class PeriodTest extends UnitTest {
 
     @Test
@@ -49,5 +51,27 @@ public class PeriodTest extends UnitTest {
 
         Assertions.assertEquals(start, aPeriod.start());
         Assertions.assertEquals(end, aPeriod.end());
+    }
+
+    @Test
+    void givenAValidValues_whenCallStartValidate_thenShouldReturnInstant() {
+        var start = InstantUtils.now();
+        var minus = 1;
+        var chronoUnit = ChronoUnit.SECONDS;
+
+        final var result = Period.startValidate(start.toString(), minus, chronoUnit);
+
+        Assertions.assertNotNull(result);
+    }
+
+    @Test
+    void givenAValidValues_whenCallEndValidate_thenShouldReturnInstant() {
+        var end = InstantUtils.now();
+        var plus = 1;
+        var chronoUnit = ChronoUnit.SECONDS;
+
+        final var result = Period.endValidate(end.toString(), plus, chronoUnit);
+
+        Assertions.assertNotNull(result);
     }
 }
