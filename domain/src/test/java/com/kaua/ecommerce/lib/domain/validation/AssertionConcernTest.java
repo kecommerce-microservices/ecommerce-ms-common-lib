@@ -1,7 +1,7 @@
 package com.kaua.ecommerce.lib.domain.validation;
 
 import com.kaua.ecommerce.lib.domain.UnitTest;
-import com.kaua.ecommerce.lib.domain.exceptions.DomainException;
+import com.kaua.ecommerce.lib.domain.exceptions.ValidationException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -9,65 +9,65 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-public class AssertionConcernTest extends UnitTest {
+class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenANullName_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person(null, "email", 20, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAnEmptyEmail_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "", 20, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenANullEmail_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", null, 20, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenANameWithLessThan3Characters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("na", "email", 20, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenANameWithMoreThan50Characters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("namessssssssssssssssssssssssssssssssssssssssssssssss", "email", 20, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAnInvalidNegativeHeight_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, -1, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAnInvalidAgeLessThan18_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 17, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAnInvalidAgeEqualsTo18_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 18, 170, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAnInvalidHeightLessThan150_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 149, true, "password", "phonenumber", "12345678901", "address"));
     }
 
     @Test
     void givenAFalseActive_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, false, "password", "phonenumber", "12345678901", "address"));
     }
 
@@ -78,7 +78,7 @@ public class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenAnInvalidPasswordMoreThan20Characters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, true, "passwordpasswordpassword", "phonenumber", "12345678901", "address"));
     }
 
@@ -89,7 +89,7 @@ public class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenAnInvalidPhonenumberLessThan10Characters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, true, "password", "123456789", "12345678901", "address"));
     }
 
@@ -100,13 +100,13 @@ public class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenAnInvalidCpfNull_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, true, "password", "1234567890", null, "address"));
     }
 
     @Test
     void givenAnInvalidCpfLessThan11Characters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, true, "password", "1234567890", "1234567890", "address"));
     }
 
@@ -118,18 +118,18 @@ public class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenAnInvalidAddressWithSpecialCharacters_whenCreatePerson_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class,
+        Assertions.assertThrows(ValidationException.class,
                 () -> new Person("name", "email", 20, 170, true, "password", "1234567890", "12345678901", "address!@#$"));
     }
 
     @Test
     void givenAnEmptyItems_whenCreateItems_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class, () -> new Items(new HashSet<>(), List.of("sku1", "sku2")));
+        Assertions.assertThrows(ValidationException.class, () -> new Items(new HashSet<>(), List.of("sku1", "sku2")));
     }
 
     @Test
     void givenANullItems_whenCreateItems_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class, () -> new Items(null, List.of("sku1", "sku2")));
+        Assertions.assertThrows(ValidationException.class, () -> new Items(null, List.of("sku1", "sku2")));
     }
 
     @Test
@@ -139,12 +139,12 @@ public class AssertionConcernTest extends UnitTest {
 
     @Test
     void givenAnEmptySkus_whenCreateItems_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class, () -> new Items(Set.of("item1", "item2"), List.of()));
+        Assertions.assertThrows(ValidationException.class, () -> new Items(Set.of("item1", "item2"), List.of()));
     }
 
     @Test
     void givenANullSkus_whenCreateItems_shouldThrowException() {
-        Assertions.assertThrows(DomainException.class, () -> new Items(Set.of("item1", "item2"), null));
+        Assertions.assertThrows(ValidationException.class, () -> new Items(Set.of("item1", "item2"), null));
     }
 
     private record Person(
