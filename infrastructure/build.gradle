@@ -2,14 +2,21 @@ plugins {
     id 'java-library'
     id 'java-conventions'
     id 'jacoco-report-aggregation'
-    id "org.sonarqube" version "4.4.1.3373"
     id 'maven-publish'
+    id 'org.springframework.boot' version '3.2.5'
+    id 'io.spring.dependency-management' version '1.1.5'
 }
 
 group = 'com.kaua.ecommerce.common-lib.infrastructure'
 
 dependencies {
     implementation(project(":domain"))
+
+    implementation 'org.springframework.boot:spring-boot-starter-webflux'
+    implementation 'org.apache.commons:commons-lang3:3.16.0'
+    implementation 'org.springframework.cloud:spring-cloud-contract-wiremock:4.1.2'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     testImplementation(project(path: ':domain', configuration: 'testClasses'))
 }
@@ -40,16 +47,42 @@ testCodeCoverageReport {
         html.required = true
         html.outputLocation = file("$rootDir/build/reports/jacoco/test/jacocoTestReport.html")
     }
+
+    afterEvaluate {
+        classDirectories.setFrom(
+                files(classDirectories.files.collect {
+                    fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/Main.class'
+                    ])
+                })
+        )
+    }
+}
+
+jacocoTestReport {
+    afterEvaluate {
+        classDirectories.setFrom(
+                files(classDirectories.files.collect {
+                    fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/Main.class'
+                    ])
+                })
+        )
+    }
+}
+
+jacocoTestCoverageVerification {
+    afterEvaluate {
+        classDirectories.setFrom(
+                files(classDirectories.files.collect {
+                    fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/Main.class'
+                    ])
+                })
+        )
+    }
 }
 
 tasks.named("jacocoTestReport") {
     dependsOn(testCodeCoverageReport)
-}
-
-sonar {
-    properties {
-        property "sonar.projectKey", "kecommerce-microservices_ecommerce-ms-common-lib"
-        property "sonar.organization", "kecommerce-microservices"
-        property "sonar.host.url", "https://sonarcloud.io"
-    }
 }

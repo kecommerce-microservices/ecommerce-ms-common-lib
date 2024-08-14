@@ -3,41 +3,60 @@ package com.kaua.ecommerce.lib.domain.exceptions;
 import com.kaua.ecommerce.lib.domain.AggregateRoot;
 import com.kaua.ecommerce.lib.domain.Identifier;
 import com.kaua.ecommerce.lib.domain.UnitTest;
+import com.kaua.ecommerce.lib.domain.utils.IdentifierUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
 
-public class NotFoundExceptionTest extends UnitTest {
+class NotFoundExceptionTest extends UnitTest {
 
     @Test
-    void givenAValidAggregate_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
+    void givenAValidAggregateWithIdentifierFieldName_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
         // given
         final var aggregate = SampleAggregate.class;
+        final var aIdentifierField = "id";
         final var aId = "123";
         final var expectedErrorMessage = "SampleAggregate with id 123 was not found";
 
         // when
-        final var notFoundException = NotFoundException.with(aggregate, aId);
+        final var notFoundException = NotFoundException.with(aggregate, aIdentifierField, aId);
         // then
         Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
     }
 
     @Test
-    void givenAValidAggregateStringName_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
+    void givenAValidAggregateStringNameWithIdentifierFieldName_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
         // given
         final var aggregate = "SampleAggregate";
+        final var aIdentifierField = "id";
         final var aId = "123";
         final var expectedErrorMessage = "SampleAggregate with id 123 was not found";
 
         // when
-        final var notFoundException = NotFoundException.with(aggregate, aId);
+        final var notFoundException = NotFoundException.with(aggregate, aIdentifierField, aId);
         // then
         Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
     }
 
     @Test
-    void givenAValidAggregateUUID_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
+    void givenAValidAggregateUUIDWithIdentifierFieldName_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
+        // given
+        final var aggregate = SampleAggregate.class;
+        final var aIdentifierField = "id";
+        final var aId = new SampleUUIDIdentifier(UUID.randomUUID());
+        final var expectedErrorMessage = "SampleAggregate with id %s was not found"
+                .formatted(aId.value());
+
+        // when
+        final var notFoundException = NotFoundException.with(aggregate, aIdentifierField, aId);
+
+        // then
+        Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
+    }
+
+    @Test
+    void givenAValidAggregateUUIDStringName_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
         // given
         final var aggregate = SampleAggregate.class;
         final var aId = new SampleUUIDIdentifier(UUID.randomUUID());
@@ -49,6 +68,49 @@ public class NotFoundExceptionTest extends UnitTest {
 
         // then
         Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
+    }
+
+    @Test
+    void givenAValidAggregateId_whenCallNotFoundExceptionWith_ThenReturnNotFoundException() {
+        // given
+        final var aggregate = "SampleAggregate";
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "SampleAggregate with id %s was not found"
+                .formatted(aId);
+
+        // when
+        final var notFoundException = NotFoundException.with(aggregate, aId);
+
+        // then
+        Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
+    }
+
+    @Test
+    void givenAValidAggregateId_whenCallNotFoundExceptionWithAggregate_ThenReturnNotFoundException() {
+        // given
+        final var aggregate = SampleAggregate.class;
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "SampleAggregate with id %s was not found"
+                .formatted(aId);
+
+        // when
+        final var notFoundException = NotFoundException.with(aggregate, aId);
+
+        // then
+        Assertions.assertEquals(expectedErrorMessage, notFoundException.get().getMessage());
+    }
+
+    @Test
+    void givenAValidMessage_whenCallNotFoundExceptionWithMessage_ThenReturnNotFoundException() {
+        // given
+        final var message = "Sample message";
+        final var expectedErrorMessage = "Sample message";
+
+        // when
+        final var notFoundException = NotFoundException.with(message);
+
+        // then
+        Assertions.assertEquals(expectedErrorMessage, notFoundException.getMessage());
     }
 
     private static class SampleAggregate extends AggregateRoot<SampleIdentifier> {
