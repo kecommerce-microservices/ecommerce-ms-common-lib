@@ -1,0 +1,2 @@
+web-client:
+  base-url: "http://localhost:${wiremock.server.port:9091}"
