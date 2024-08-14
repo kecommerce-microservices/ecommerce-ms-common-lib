@@ -94,7 +94,7 @@ sonar {
         property "sonar.organization", "kecommerce-microservices"
         property "sonar.host.url", "https://sonarcloud.io"
         property "sonar.coverage.jacoco.xmlReportPaths", "${rootDir}/build/reports/jacoco/test/jacocoTestReport.xml"
-        property "sonar.coverage.exclusions", "infrastructure/src/main/java/com/kaua/ecommerce/lib/infrastructure/Main.java"
-        property "sonar.exclusions", "infrastructure/src/main/java/com/kaua/ecommerce/lib/infrastructure/Main.java,infrastructure/src/main/resources/application-test-**.yml"
+        property "sonar.coverage.exclusions", "com/kaua/ecommerce/lib/infrastructure/Main.java"
+        property "sonar.exclusions", "com/kaua/ecommerce/lib/infrastructure/Main.java,infrastructure/src/main/resources/application-test-**.yml"
     }
 }
