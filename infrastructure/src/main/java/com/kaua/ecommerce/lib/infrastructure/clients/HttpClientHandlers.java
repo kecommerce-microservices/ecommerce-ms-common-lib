@@ -152,20 +152,27 @@ public interface HttpClientHandlers {
      **/
     default Function<ClientResponse, Mono<? extends Throwable>> a5xxHandler(final String id, final String... actionParam) {
         return response -> {
-            final var aResponse = response.bodyToMono(String.class);
             final var aMethodName = response.request().getMethod().name();
             final var aStatus = response.statusCode().value();
+            final var aResponse = response.bodyToMono(String.class);
 
             final var aAction = Optional.ofNullable(actionParam.length > 0 ? actionParam[0] : null);
 
-            final var aMessage = aAction.map(action -> "Error observed during %s from %s [method:%s] [resourceId:%s] [status:%s] [response:%s]"
-                            .formatted(action, namespace(), aMethodName, id, aStatus, aResponse))
-                    .orElse("Error observed from %s [method:%s] [resourceId:%s] [status:%s] [response:%s]"
-                            .formatted(namespace(), aMethodName, id, aStatus, aResponse));
+            return aResponse.flatMap(aResp -> {
+                final var aMessage = aAction.map(action -> "Error observed during %s from %s [method:%s] [resourceId:%s] [status:%s] [response:%s]"
+                                .formatted(action, namespace(), aMethodName, id, aStatus, aResp))
+                        .orElse("Error observed from %s [method:%s] [resourceId:%s] [status:%s] [response:%s]"
+                                .formatted(namespace(), aMethodName, id, aStatus, aResp));
 
-            logger().info(aMessage);
+                logger().info(aMessage);
 
-            return Mono.error(InternalErrorException.with(aMessage, aStatus));
+                return Mono.error(InternalErrorException.with(aMessage, aStatus));
+            }).switchIfEmpty(Mono.defer(() -> handleErrorWithoutResponse(
+                    "Error observed",
+                    aMethodName,
+                    id,
+                    (errorResponse -> InternalErrorException.with(errorResponse.message())),
+                    actionParam))).cast(Throwable.class);
         };
     }
 

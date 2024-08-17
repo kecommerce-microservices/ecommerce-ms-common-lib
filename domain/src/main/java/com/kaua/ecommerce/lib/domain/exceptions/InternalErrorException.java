@@ -22,7 +22,7 @@ public class InternalErrorException extends NoStacktraceException {
         return new InternalErrorException(message, cause, statusCode);
     }
 
-    public static InternalErrorException with(final String message ) {
+    public static InternalErrorException with(final String message) {
         return new InternalErrorException(message, 0);
     }
 
