@@ -1,27 +1,29 @@
 package com.kaua.ecommerce.lib.infrastructure.clients;
 
-import com.kaua.ecommerce.lib.domain.exceptions.DomainException;
 import com.kaua.ecommerce.lib.domain.exceptions.InternalErrorException;
+import com.kaua.ecommerce.lib.domain.exceptions.NoStacktraceException;
 import com.kaua.ecommerce.lib.domain.exceptions.NotFoundException;
-import com.kaua.ecommerce.lib.domain.exceptions.ValidationException;
 import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.handler.timeout.WriteTimeoutException;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClientException;
-import reactor.core.publisher.Mono;
 
 import java.net.ConnectException;
 import java.util.Optional;
-import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
-public interface HttpClientUtils {
+public interface HttpClientUtils extends HttpClientHandlers {
 
     Predicate<HttpStatusCode> isNotFound = HttpStatus.NOT_FOUND::equals;
+
+    Predicate<HttpStatusCode> isForbidden = HttpStatus.FORBIDDEN::equals;
+
+    Predicate<HttpStatusCode> isUnauthorized = HttpStatus.UNAUTHORIZED::equals;
+
+    Predicate<HttpStatusCode> isConflict = HttpStatus.CONFLICT::equals;
 
     Predicate<HttpStatusCode> is5xx = HttpStatusCode::is5xxServerError;
 
@@ -29,46 +31,21 @@ public interface HttpClientUtils {
 
     Predicate<HttpStatusCode> isUnprocessableEntity = HttpStatus.UNPROCESSABLE_ENTITY::equals;
 
-    String namespace();
-
-    default Function<ClientResponse, Mono<? extends Throwable>> badRequestHandler(final String id) {
-        return response -> {
-            final var responseBody = response.bodyToMono(String.class);
-
-            return responseBody.flatMap(body -> Mono.error(ValidationException
-                    .with("Bad request observed from %s [method:%s] [resourceId:%s] [body:%s]"
-                            .formatted(namespace(), response.request().getMethod().name(), id, body))));
-        };
-    }
-
-    default Function<ClientResponse, Mono<? extends Throwable>> notFoundHandler(final String id) {
-        return response -> Mono.error(NotFoundException
-                .with("Not found observed from %s [resourceId:%s]"
-                        .formatted(namespace(), id)));
-    }
-
-    default Function<ClientResponse, Mono<? extends Throwable>> unprocessableEntityHandler(final String id) {
-        return response -> {
-            final var responseBody = response.bodyToMono(String.class);
-
-            return responseBody.flatMap(body -> Mono.error(DomainException
-                    .with("Unprocessable entity observed from %s [method:%s] [resourceId:%s] [body:%s]"
-                            .formatted(namespace(), response.request().getMethod().name(), id, body))));
-        };
-    }
-
-    default Function<ClientResponse, Mono<? extends Throwable>> a5xxHandler(final String id) {
-        return response -> Mono.error(InternalErrorException
-                .with("Error observed from %s [method:%s] [resourceId:%s] [status:%s]"
-                        .formatted(namespace(), response.request().getMethod().name(), id, response.statusCode().value())));
-    }
-
+    /**
+     * @param id  - resource id
+     * @param fn  - function to be executed
+     * @param <T> - return type
+     * @return - Optional of T
+     * <p> This method is used to handle GET requests </p>
+     * <p> It will return an Optional of T, if the request is successful </p>
+     * <p> If the request is not successful, it will throw an NoStacktraceException and subclasses and other exceptions throws internal error exception </p>
+     **/
     default <T> Optional<T> doGet(final String id, final Supplier<T> fn) {
         try {
             return Optional.ofNullable(fn.get());
         } catch (NotFoundException ex) {
             return Optional.empty();
-        } catch (DomainException ex) {
+        } catch (NoStacktraceException ex) {
             throw ex;
         } catch (WebClientException ex) {
             throw handleWebClientException(id, ex);
@@ -77,10 +54,19 @@ public interface HttpClientUtils {
         }
     }
 
+    /**
+     * @param id  - resource id
+     * @param fn  - function to be executed
+     * @param <T> - return type
+     * @return - T
+     * <p> This method is used to handle POST requests with resource id </p>
+     * <p> It will return T, if the request is successful </p>
+     * <p> If the request is not successful, it will throw an NoStacktraceException and subclasses and other exceptions throws internal error exception </p>
+     **/
     default <T> T doPost(final String id, final Supplier<T> fn) {
         try {
             return fn.get();
-        } catch (DomainException ex) {
+        } catch (NoStacktraceException ex) {
             throw ex;
         } catch (WebClientException ex) {
             throw handleWebClientException(id, ex);
@@ -89,10 +75,18 @@ public interface HttpClientUtils {
         }
     }
 
+    /**
+     * @param fn  - function to be executed
+     * @param <T> - return type
+     * @return - T
+     * <p> This method is used to handle POST requests </p>
+     * <p> It will return T, if the request is successful </p>
+     * <p> If the request is not successful, it will throw an NoStacktraceException and subclasses and other exceptions throws internal error exception </p>
+     **/
     default <T> T doPost(final Supplier<T> fn) {
         try {
             return fn.get();
-        } catch (DomainException ex) {
+        } catch (NoStacktraceException ex) {
             throw ex;
         } catch (WebClientException ex) {
             throw handleWebClientException(ex);
@@ -101,10 +95,19 @@ public interface HttpClientUtils {
         }
     }
 
+    /**
+     * @param id  - resource id
+     * @param fn  - function to be executed
+     * @param <T> - return type
+     * @return - T
+     * <p> This method is used to handle PUT or PATCH requests </p>
+     * <p> It will return T, if the request is successful </p>
+     * <p> If the request is not successful, it will throw an NoStacktraceException and subclasses and other exceptions throws internal error exception </p>
+     **/
     default <T> T doUpdate(final String id, final Supplier<T> fn) {
         try {
             return fn.get();
-        } catch (NotFoundException | DomainException ex) {
+        } catch (NoStacktraceException ex) {
             throw ex;
         } catch (WebClientException ex) {
             throw handleWebClientException(id, ex);

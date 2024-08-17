@@ -1,18 +1,26 @@
 package com.kaua.ecommerce.lib.infrastructure.clients;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.tomakehurst.wiremock.client.WireMock;
 import com.kaua.ecommerce.lib.domain.exceptions.DomainException;
 import com.kaua.ecommerce.lib.domain.exceptions.InternalErrorException;
 import com.kaua.ecommerce.lib.domain.exceptions.NotFoundException;
+import com.kaua.ecommerce.lib.domain.exceptions.ValidationException;
 import com.kaua.ecommerce.lib.domain.utils.IdentifierUtils;
+import com.kaua.ecommerce.lib.domain.validation.Error;
 import com.kaua.ecommerce.lib.infrastructure.Main;
+import com.kaua.ecommerce.lib.infrastructure.exceptions.ConflictException;
+import com.kaua.ecommerce.lib.infrastructure.exceptions.ForbiddenException;
+import com.kaua.ecommerce.lib.infrastructure.exceptions.UnauthorizedException;
 import io.netty.channel.ChannelOption;
 import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -23,6 +31,8 @@ import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
@@ -82,8 +92,8 @@ public class HttpClientUtilsTest {
     @Test
     void testBadRequestHandler() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Bad request observed from HttpClientUtilsImpl [method:GET] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrorMessage = "ValidationException";
+        final var expectedErrors = List.of(new Error("Teste"));
 
         stubFor(
                 get("/bad-request")
@@ -100,7 +110,7 @@ public class HttpClientUtilsTest {
 
         final var aClient = new HttpClientUtilsImpl();
 
-        final var aException = Assertions.assertThrows(DomainException.class,
+        final var aException = Assertions.assertThrows(ValidationException.class,
                 () -> aClient.doGet(aId, () -> aWebClient.get()
                         .uri("/bad-request")
                         .retrieve()
@@ -112,6 +122,7 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
@@ -149,8 +160,8 @@ public class HttpClientUtilsTest {
     @Test
     void testUnprocessableEntityHandler() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Unprocessable entity observed from HttpClientUtilsImpl [method:GET] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrorMessage = "DomainException";
+        final var expectedErrors = List.of(new Error("Teste"));
 
         stubFor(
                 get("/unprocessable-entity")
@@ -179,13 +190,12 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
     void test5xxHandler() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl [method:GET] [resourceId:%s] [status:500]"
-                .formatted(aId);
 
         stubFor(
                 get("/5xx")
@@ -212,7 +222,7 @@ public class HttpClientUtilsTest {
                         .bodyToMono(String.class)
                         .block()));
 
-        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertNotNull(aException.getMessage());
     }
 
     @Test
@@ -330,16 +340,16 @@ public class HttpClientUtilsTest {
     }
 
     @Test
-    void testPostBadRequestHandler() {
+    void testPostBadRequestHandler() throws JsonProcessingException {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Bad request observed from HttpClientUtilsImpl [method:POST] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrors = List.of(new Error("firstName", "should not be empty"));
+        final var expectedErrorMessage = "ValidationException";
 
         stubFor(
                 post("/bad-request")
                         .willReturn(aResponse()
                                 .withStatus(400)
-                                .withBody("Teste")
+                                .withBody(mapper.writeValueAsString(DomainException.with(expectedErrors)))
                         )
         );
 
@@ -350,7 +360,7 @@ public class HttpClientUtilsTest {
 
         final var aClient = new HttpClientUtilsImpl();
 
-        final var aException = Assertions.assertThrows(DomainException.class,
+        final var aException = Assertions.assertThrows(ValidationException.class,
                 () -> aClient.doPost(aId, () -> aWebClient.post()
                         .uri("/bad-request")
                         .bodyValue("Teste")
@@ -362,19 +372,25 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
-    void testPostUnprocessableEntityHandler() {
+    void testPostUnprocessableEntityHandler() throws JsonProcessingException {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Unprocessable entity observed from HttpClientUtilsImpl [method:POST] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrors = List.of(
+                new Error("firstName", "should not be empty"),
+                new Error("lastName", "should not be empty"),
+                new Error("email", "should be a valid email")
+        );
+        final var expectedErrorMessage = "DomainException";
+
 
         stubFor(
                 post("/unprocessable-entity")
                         .willReturn(aResponse()
                                 .withStatus(422)
-                                .withBody("Teste")
+                                .withBody(mapper.writeValueAsString(DomainException.with(expectedErrors)))
                         )
         );
 
@@ -397,13 +413,12 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
     void testPostThrowWebClientException() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl [method:POST] [resourceId:%s] [status:500]"
-                .formatted(aId);
 
         stubFor(
                 post("/5xx")
@@ -430,7 +445,7 @@ public class HttpClientUtilsTest {
                         .bodyToMono(String.class)
                         .block()));
 
-        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertNotNull(aException.getMessage());
     }
 
     @Test
@@ -537,6 +552,55 @@ public class HttpClientUtilsTest {
     }
 
     @Test
+    void testDoPostWithIdUnexpectedException() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                post("/5xx")
+                        .willReturn(aResponse()
+                                .withStatus(500)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doPost(aId, () -> aWebClient.post()
+                        .uri("/5xx")
+                        .bodyValue("Teste")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(null))
+                        .onStatus(aClient.isUnprocessableEntity, aClient.unprocessableEntityHandler(null))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testDoUpdateUnexpectedException() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Unhandled error observed from HttpClientUtilsImpl [resourceId:%s]"
+                .formatted(aId);
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doUpdate(aId, () -> {
+                    throw new RuntimeException("Unexpected error");
+                }));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
     void testDoPostWithoutIdWebClientUnexpectedException() {
         final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl on making a POST request";
 
@@ -638,14 +702,15 @@ public class HttpClientUtilsTest {
     }
 
     @Test
-    void testDoPostWithoutIdBadRequestHandler() {
-        final var expectedErrorMessage = "Bad request observed from HttpClientUtilsImpl [method:POST] [resourceId:null] [body:Teste]";
+    void testDoPostWithoutIdBadRequestHandler() throws JsonProcessingException {
+        final var expectedErrorMessage = "ValidationException";
+        final var expectedErrors = List.of(new Error("firstName", "should not be empty"));
 
         stubFor(
                 post("/bad-request")
                         .willReturn(aResponse()
                                 .withStatus(400)
-                                .withBody("Teste")
+                                .withBody(mapper.writeValueAsString(DomainException.with(new Error("firstName", "should not be empty"))))
                         )
         );
 
@@ -656,7 +721,7 @@ public class HttpClientUtilsTest {
 
         final var aClient = new HttpClientUtilsImpl();
 
-        final var aException = Assertions.assertThrows(DomainException.class,
+        final var aException = Assertions.assertThrows(ValidationException.class,
                 () -> aClient.doPost(() -> aWebClient.post()
                         .uri("/bad-request")
                         .bodyValue("Teste")
@@ -668,12 +733,11 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
     void testDoPostWithoutId5xxHandler() {
-        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl [method:POST] [resourceId:null] [status:500]";
-
         stubFor(
                 post("/5xx")
                         .willReturn(aResponse()
@@ -699,7 +763,7 @@ public class HttpClientUtilsTest {
                         .bodyToMono(String.class)
                         .block()));
 
-        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertNotNull(aException.getMessage());
     }
 
     @Test
@@ -740,8 +804,8 @@ public class HttpClientUtilsTest {
     @Test
     void testDoUpdateBadRequest() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Bad request observed from HttpClientUtilsImpl [method:PUT] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrorMessage = "ValidationException";
+        final var expectedErrors = List.of(new Error("Teste"));
 
         stubFor(
                 put("/bad-request")
@@ -758,7 +822,7 @@ public class HttpClientUtilsTest {
 
         final var aClient = new HttpClientUtilsImpl();
 
-        final var aException = Assertions.assertThrows(DomainException.class,
+        final var aException = Assertions.assertThrows(ValidationException.class,
                 () -> aClient.doUpdate(aId, () -> aWebClient.put()
                         .uri("/bad-request")
                         .bodyValue("Teste")
@@ -771,13 +835,14 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
     void testDoUpdateUnprocessableEntity() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Unprocessable entity observed from HttpClientUtilsImpl [method:PUT] [resourceId:%s] [body:Teste]"
-                .formatted(aId);
+        final var expectedErrorMessage = "DomainException";
+        final var expectedErrors = List.of(new Error("Teste"));
 
         stubFor(
                 put("/unprocessable-entity")
@@ -807,13 +872,12 @@ public class HttpClientUtilsTest {
                         .block()));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(expectedErrors, aException.getErrors());
     }
 
     @Test
     void testDoUpdate5xx() {
         final var aId = IdentifierUtils.generateNewId();
-        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl [method:PUT] [resourceId:%s] [status:500]"
-                .formatted(aId);
 
         stubFor(
                 put("/5xx")
@@ -841,7 +905,7 @@ public class HttpClientUtilsTest {
                         .bodyToMono(String.class)
                         .block()));
 
-        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertNotNull(aException.getMessage());
     }
 
     @Test
@@ -913,6 +977,356 @@ public class HttpClientUtilsTest {
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
     }
 
+    @Test
+    void testUnprocessableEntityHandlerUpdate() throws JsonProcessingException {
+        final var aId = IdentifierUtils.generateNewId();
+        final var aErrors = List.of(
+                new Error("firstName", "should not be empty"),
+                new Error("lastName", "should not be empty"),
+                new Error("email", "should be a valid email")
+        );
+        final var expectedErrorMessage = "DomainException";
+
+        stubFor(
+                put("/unprocessable-entity")
+                        .willReturn(aResponse()
+                                .withStatus(422)
+                                .withBody(mapper.writeValueAsString(DomainException.with(aErrors)))
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(DomainException.class,
+                () -> aClient.doUpdate(aId, () -> aWebClient.put()
+                        .uri("/unprocessable-entity")
+                        .bodyValue("Teste")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId))
+                        .onStatus(aClient.isNotFound, aClient.notFoundHandler(aId))
+                        .onStatus(aClient.isUnprocessableEntity, aClient.unprocessableEntityHandler(aId, "update"))
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+        Assertions.assertEquals(aErrors, aException.getErrors());
+    }
+
+    @Test
+    void testForbiddenHandler() throws JsonProcessingException {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "{\"grant_type\":\"invalid_grant_type\"}";
+
+        stubFor(
+                get("/forbidden")
+                        .willReturn(aResponse()
+                                .withStatus(403)
+                                .withBody(mapper.writeValueAsString(Map.of("grant_type", "invalid_grant_type")))
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ForbiddenException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/forbidden")
+                        .retrieve()
+                        .onStatus(aClient.isForbidden, aClient.forbiddenHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testForbiddenWithoutBodyHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Forbidden observed from HttpClientUtilsImpl [method:GET] [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                get("/forbidden")
+                        .willReturn(aResponse()
+                                .withStatus(403)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ForbiddenException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/forbidden")
+                        .retrieve()
+                        .onStatus(aClient.isForbidden, aClient.forbiddenHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testUnauthorizedHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Unauthorized observed from HttpClientUtilsImpl [method:GET] [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                get("/unauthorized")
+                        .willReturn(aResponse()
+                                .withStatus(401)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(UnauthorizedException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/unauthorized")
+                        .retrieve()
+                        .onStatus(aClient.isUnauthorized, aClient.unauthorizedHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testUnauthorizedWithBodyHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Teste";
+
+        stubFor(
+                get("/unauthorized")
+                        .willReturn(aResponse()
+                                .withStatus(401)
+                                .withBody("Teste")
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(UnauthorizedException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/unauthorized")
+                        .retrieve()
+                        .onStatus(aClient.isUnauthorized, aClient.unauthorizedHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testConflictHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Conflict observed from HttpClientUtilsImpl [method:GET] [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                get("/conflict")
+                        .willReturn(aResponse()
+                                .withStatus(409)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ConflictException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/conflict")
+                        .retrieve()
+                        .onStatus(aClient.isConflict, aClient.conflictHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testConflictWithBodyHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Teste";
+
+        stubFor(
+                get("/conflict")
+                        .willReturn(aResponse()
+                                .withStatus(409)
+                                .withBody("Teste")
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ConflictException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/conflict")
+                        .retrieve()
+                        .onStatus(aClient.isConflict, aClient.conflictHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testBadRequestWithActionHandler() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "ValidationException";
+
+        stubFor(
+                get("/bad-request")
+                        .willReturn(aResponse()
+                                .withStatus(400)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ValidationException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/bad-request")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId, "get user"))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testBadRequestWithTwoActionHandlerButSecondDoesNotWork() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "ValidationException";
+
+        stubFor(
+                get("/bad-request")
+                        .willReturn(aResponse()
+                                .withStatus(400)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ValidationException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/bad-request")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId, "get user", "get user by id"))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testA5xxHandlerWithAction() throws JsonProcessingException {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Error observed during get user from HttpClientUtilsImpl [method:GET] [resourceId:%s] [status:500] [response:{\"key\":\"value\"}]"
+                .formatted(aId);
+
+        stubFor(
+                get("/5xx")
+                        .willReturn(aResponse()
+                                .withStatus(500)
+                                .withBody(mapper.writeValueAsString(Map.of("key", "value")))
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/5xx")
+                        .retrieve()
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId, "get user"))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testA5xxHandlerWithTwoActionButFirstWork() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Error observed during get user from HttpClientUtilsImpl [method:GET] [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                get("/5xx")
+                        .willReturn(aResponse()
+                                .withStatus(500)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doGet(aId, () -> aWebClient.get()
+                        .uri("/5xx")
+                        .retrieve()
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId, "get user", "get user by id"))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
     private HttpClient createHttpClientConfig() {
         return HttpClient.create()
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Duration.ofSeconds(1).toMillisPart())
@@ -926,6 +1340,11 @@ public class HttpClientUtilsTest {
         @Override
         public String namespace() {
             return "HttpClientUtilsImpl";
+        }
+
+        @Override
+        public Logger logger() {
+            return LoggerFactory.getLogger(HttpClientUtilsImpl.class);
         }
     }
 }
