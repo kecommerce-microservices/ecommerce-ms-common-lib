@@ -16,6 +16,8 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3:3.16.0'
     implementation 'org.springframework.cloud:spring-cloud-contract-wiremock:4.1.2'
 
+    implementation 'com.fasterxml.jackson.module:jackson-module-blackbird'
+
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
     testImplementation(project(path: ':domain', configuration: 'testClasses'))
@@ -52,6 +54,7 @@ testCodeCoverageReport {
         classDirectories.setFrom(
                 files(classDirectories.files.collect {
                     fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/configurations/**',
                             'com/kaua/ecommerce/lib/infrastructure/Main.class'
                     ])
                 })
@@ -64,6 +67,7 @@ jacocoTestReport {
         classDirectories.setFrom(
                 files(classDirectories.files.collect {
                     fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/configurations/**',
                             'com/kaua/ecommerce/lib/infrastructure/Main.class'
                     ])
                 })
@@ -76,6 +80,7 @@ jacocoTestCoverageVerification {
         classDirectories.setFrom(
                 files(classDirectories.files.collect {
                     fileTree(dir: it, exclude: [
+                            'com/kaua/ecommerce/lib/infrastructure/configurations/**',
                             'com/kaua/ecommerce/lib/infrastructure/Main.class'
                     ])
                 })
