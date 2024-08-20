@@ -519,7 +519,7 @@ public class HttpClientUtilsTest {
 
     @Test
     void testDoPostWithoutIdReadTimeoutException() {
-        final var expectedErrorMessage = "Timeout error observed from HttpClientUtilsImpl on making a POST request";
+        final var expectedErrorMessage = "Timeout error observed from HttpClientUtilsImpl on making request";
 
         stubFor(
                 post("/write-timeout")
@@ -602,7 +602,7 @@ public class HttpClientUtilsTest {
 
     @Test
     void testDoPostWithoutIdWebClientUnexpectedException() {
-        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl on making a POST request";
+        final var expectedErrorMessage = "Error observed from HttpClientUtilsImpl on making request";
 
         stubFor(
                 post("/5xx")
@@ -633,7 +633,7 @@ public class HttpClientUtilsTest {
 
     @Test
     void testDoPostWithoutIdUnexpectedException() {
-        final var expectedErrorMessage = "Unhandled error observed from HttpClientUtilsImpl on making a POST request";
+        final var expectedErrorMessage = "Unhandled error observed from HttpClientUtilsImpl on making request";
 
         final var aClient = new HttpClientUtilsImpl();
 
@@ -678,7 +678,7 @@ public class HttpClientUtilsTest {
 
     @Test
     void testDoPostWithoutIdConnectionTimeoutException() {
-        final var expectedErrorMessage = "ConnectionTimeout error observed from HttpClientUtilsImpl on making a POST request";
+        final var expectedErrorMessage = "ConnectionTimeout error observed from HttpClientUtilsImpl on making request";
 
         final var aWebClient = WebClient.builder()
                 .baseUrl("http://localhost:1234")
@@ -1323,6 +1323,136 @@ public class HttpClientUtilsTest {
                         .onStatus(aClient.is5xx, aClient.a5xxHandler(aId, "get user", "get user by id"))
                         .bodyToMono(String.class)
                         .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testDoDeleteSuccess() {
+        final var aId = IdentifierUtils.generateNewId();
+
+        stubFor(
+                delete("/v3/test")
+                        .willReturn(aResponse()
+                                .withStatus(200)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        Assertions.assertDoesNotThrow(
+                () -> aClient.doDelete(aId, () -> aWebClient.delete()
+                        .uri("/v3/test")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId))
+                        .onStatus(aClient.isNotFound, aClient.notFoundHandler(aId))
+                        .onStatus(aClient.isUnprocessableEntity, aClient.unprocessableEntityHandler(aId))
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+    }
+
+    @Test
+    void testDoDeleteThrowBadRequest() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "ValidationException";
+
+        stubFor(
+                delete("/bad-request")
+                        .willReturn(aResponse()
+                                .withStatus(400)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(ValidationException.class,
+                () -> aClient.doDelete(aId, () -> aWebClient.delete()
+                        .uri("/bad-request")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId))
+                        .onStatus(aClient.isNotFound, aClient.notFoundHandler(aId))
+                        .onStatus(aClient.isUnprocessableEntity, aClient.unprocessableEntityHandler(aId))
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testDoDeleteThrowTimeout() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Timeout error observed from HttpClientUtilsImpl [resourceId:%s]"
+                .formatted(aId);
+
+        stubFor(
+                delete("/timeout")
+                        .willReturn(aResponse()
+                                .withStatus(200)
+                                .withFixedDelay(5000)
+                        )
+        );
+
+        final var aWebClient = WebClient.builder()
+                .baseUrl(url)
+                .clientConnector(new ReactorClientHttpConnector(createHttpClientConfig()))
+                .build();
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doDelete(aId, () -> aWebClient.delete()
+                        .uri("/timeout")
+                        .retrieve()
+                        .onStatus(aClient.isBadRequest, aClient.badRequestHandler(aId))
+                        .onStatus(aClient.isNotFound, aClient.notFoundHandler(aId))
+                        .onStatus(aClient.isUnprocessableEntity, aClient.unprocessableEntityHandler(aId))
+                        .onStatus(aClient.is5xx, aClient.a5xxHandler(aId))
+                        .bodyToMono(String.class)
+                        .block()));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testDoDeleteThrowUnexpectedError() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Unhandled error observed from HttpClientUtilsImpl [resourceId:%s]"
+                .formatted(aId);
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doDelete(aId, () -> {
+                    throw new RuntimeException("Unexpected error");
+                }));
+
+        Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
+    }
+
+    @Test
+    void testDoPostThrowUnexpectedError() {
+        final var aId = IdentifierUtils.generateNewId();
+        final var expectedErrorMessage = "Unhandled error observed from HttpClientUtilsImpl [resourceId:%s]"
+                .formatted(aId);
+
+        final var aClient = new HttpClientUtilsImpl();
+
+        final var aException = Assertions.assertThrows(InternalErrorException.class,
+                () -> aClient.doPost(aId, () -> {
+                    throw new RuntimeException("Unexpected error");
+                }));
 
         Assertions.assertEquals(expectedErrorMessage, aException.getMessage());
     }
