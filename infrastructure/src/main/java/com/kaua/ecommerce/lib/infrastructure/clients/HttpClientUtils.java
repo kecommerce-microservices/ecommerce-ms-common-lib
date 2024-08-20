@@ -116,6 +116,18 @@ public interface HttpClientUtils extends HttpClientHandlers {
         }
     }
 
+    default <T> void doDelete(final String id, final Supplier<T> fn) {
+        try {
+            fn.get();
+        } catch (NoStacktraceException ex) {
+            throw ex;
+        } catch (WebClientException ex) {
+            throw handleWebClientException(id, ex);
+        } catch (Throwable t) {
+            throw handleThrowable(id, t);
+        }
+    }
+
     private InternalErrorException handleWebClientException(
             final String id,
             final WebClientException ex
@@ -124,15 +136,18 @@ public interface HttpClientUtils extends HttpClientHandlers {
         final var cause = ExceptionUtils.getRootCause(ex);
 
         if (cause instanceof ConnectException) {
+            logger().info("ConnectionTimeout error observed from %s [resourceId:%s]".formatted(namespace(), id));
             return InternalErrorException.with("ConnectionTimeout error observed from %s [resourceId:%s]"
                     .formatted(namespace(), id));
         }
 
         if (cause instanceof ReadTimeoutException || cause instanceof WriteTimeoutException) {
+            logger().info("Timeout error observed from %s [resourceId:%s]".formatted(namespace(), id));
             return InternalErrorException.with("Timeout error observed from %s [resourceId:%s]"
                     .formatted(namespace(), id));
         }
 
+        logger().info("Error observed from %s [resourceId:%s]".formatted(namespace(), id), ex);
         return InternalErrorException.with("Error observed from %s [resourceId:%s]"
                 .formatted(namespace(), id), ex);
     }
@@ -142,6 +157,7 @@ public interface HttpClientUtils extends HttpClientHandlers {
             return ex;
         }
 
+        logger().error("Unhandled error observed from %s [resourceId:%s]".formatted(namespace(), id), t);
         return InternalErrorException.with("Unhandled error observed from %s [resourceId:%s]".formatted(namespace(), id), t);
     }
 
@@ -149,16 +165,19 @@ public interface HttpClientUtils extends HttpClientHandlers {
         final var cause = ExceptionUtils.getRootCause(ex);
 
         if (cause instanceof ConnectException) {
-            return InternalErrorException.with("ConnectionTimeout error observed from %s on making a POST request"
+            logger().info("ConnectionTimeout error observed from %s on making request".formatted(namespace()));
+            return InternalErrorException.with("ConnectionTimeout error observed from %s on making request"
                     .formatted(namespace()));
         }
 
         if (cause instanceof ReadTimeoutException || cause instanceof WriteTimeoutException) {
-            return InternalErrorException.with("Timeout error observed from %s on making a POST request"
+            logger().info("Timeout error observed from %s on making request".formatted(namespace()));
+            return InternalErrorException.with("Timeout error observed from %s on making request"
                     .formatted(namespace()));
         }
 
-        return InternalErrorException.with("Error observed from %s on making a POST request"
+        logger().info("Error observed from %s on making request".formatted(namespace()), ex);
+        return InternalErrorException.with("Error observed from %s on making request"
                 .formatted(namespace()), ex);
     }
 
@@ -167,6 +186,7 @@ public interface HttpClientUtils extends HttpClientHandlers {
             return ex;
         }
 
-        return InternalErrorException.with("Unhandled error observed from %s on making a POST request".formatted(namespace()), t);
+        logger().error("Unhandled error observed from %s on making request".formatted(namespace()), t);
+        return InternalErrorException.with("Unhandled error observed from %s on making request".formatted(namespace()), t);
     }
 }
